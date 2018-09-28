@@ -338,7 +338,8 @@ func (a *FakeAccount) IsFunded() bool {
 func (a *FakeAccount) Check() bool {
 	b, err := stellarnet.ParseStellarAmount(a.balance.Amount)
 	require.NoError(a.T, err)
-	minimumReserve := stellarnet.MustParseStellarAmount("1.0")
+	minimumReserve, err := stellarnet.ParseStellarAmount("1.0")
+	require.NoError(a.T, err)
 	switch {
 	case b == 0:
 		return false
@@ -740,7 +741,7 @@ func (r *BackendMock) SubmitRelayClaim(ctx context.Context, tc *TestContext, pos
 	if !ok {
 		return res, libkb.NotFoundError{Msg: fmt.Sprintf("claim target account not found: '%v'", extract.From)}
 	}
-	if stellarnet.MustParseStellarAmount(a.balance.Amount) == 0 {
+	if amt, _ := stellarnet.ParseStellarAmount(a.balance.Amount); amt == 0 {
 		return res, fmt.Errorf("claim source account has zero balance: %v", a.accountID)
 	}
 	a.AdjustBalance(-(int64(unpackedTx.Tx.Fee)))
@@ -1004,7 +1005,9 @@ func (r *BackendMock) Gift(accountID stellar1.AccountID, amount string) {
 	r.Lock()
 	defer r.Unlock()
 	require.NotNil(r.T, r.accounts[accountID], "account for gift")
-	r.accounts[accountID].AdjustBalance(int64(stellarnet.MustParseStellarAmount(amount)))
+	amt, err := stellarnet.ParseStellarAmount(amount)
+	require.NoError(r.T, err)
+	r.accounts[accountID].AdjustBalance(amt)
 }
 
 func (r *BackendMock) CreateFakeAsset(code string) stellar1.Asset {
